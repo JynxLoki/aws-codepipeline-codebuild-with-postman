@@ -22,7 +22,8 @@ phases:
   build:
     commands:
       - echo Build started on `date` from dir `pwd`
-      - newman run PetStoreAPI.postman_collection.json -e PetStoreAPIEnvironment.postman_environment.json --reporters cli, html --reporter-html-export
+      - newman run PetStoreAPI.postman_collection.json -e PetStoreAPIEnvironment.postman_environment.json
+#      --reporters cli, html --reporter-html-export
 
 reports:
   NewmanReports: # CodeBuild will create a report group called "SurefireReports".

@@ -1,196 +1,186 @@
 {
 	"info": {
-		"_postman_id": "83e98cfc-83a9-46f8-916d-21d1a2b4e062",
-		"name": "PetStoreAPI",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+		"_postman_id": "3460c5d0-3aa9-4cc0-b8a7-4be6aa5a0dc7",
+		"name": "Capacities",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12406892"
 	},
 	"item": [
 		{
-			"name": "list pets",
+			"name": "GET schedules + GET Verify Capacities",
 			"event": [
 				{
 					"listen": "test",
 					"script": {
-						"id": "97be1e6a-eb05-414a-930d-bd85cb3eb568",
 						"exec": [
-							"/**",
-							" * ",
-							" */ ",
-							"pm.test(\"Is valid response with json array in body\", function () {",
-							"    ",
-							"    // assert that the status code is 200",
-							"    pm.response.to.be.ok; // info, success, redirection, clientError,  serverError, are other variants",
-							"     ",
-							"    // assert that the response has a valid JSON body",
-							"    pm.response.to.be.withBody;",
-							"     ",
-							"    pm.response.to.be.json; // this assertion also checks if a body  exists, so the above check is not needed",
-							"     ",
-							"    //make sure we have a valid json array",
-							"    pm.expect(pm.response.json()).to.be.an('array').but.not.an('object');",
-							"    ",
+							"let schedulesResponse = pm.response.json();",
+							"",
+							"schedulesResponse.schedules?.forEach(function(schedule) {",
+							"    pm.sendRequest(",
+							"        pm.variables.get(\"inventory_host\")",
+							"        + \"/_meta/verify-capacities?start_date=\" + \"2022-07-27\"",
+							"        + \"&end_date=\" + \"2022-07-27\"",
+							"        + \"&service_name=\" + schedule.service_name,",
+							"        function (err, serialresponse) { ",
+							"            let verifyCapacityResponse = serialresponse.json();       ",
+							"            let mview = verifyCapacityResponse.message[0].context_map[\"mview refresh lasted\"];",
+							"            mview = parseFloat(mview.substring(0, mview.length - 3));",
+							"            let capacity = verifyCapacityResponse.message[0].context_map[\"capacity calculation lasted\"];",
+							"            capacity = parseFloat(capacity.substring(0, capacity.length - 3));",
+							"",
+							"            if (verifyCapacityResponse.success == true) {",
+							"                pm.test(\"Capacity calculation should be less than 10% from the mview refresh.\", function () {",
+							"                    pm.expect((capacity / mview * 100)).to.be.below(10);",
+							"                });",
+							"            } if (verifyCapacityResponse.success == false && verifyCapacityResponse.message[0].message == \"Capacities are not verified\") {",
+							"                pm.test('Verify capacity is true.', function () {",
+							"                    pm.expect.fail(",
+							"                         \"Response: \" + verifyCapacityResponse.success",
+							"                        + \" | Service: \" + schedule.service_name ",
+							"                        + \" | Message: \" + verifyCapacityResponse.message[0].message",
+							"                        + \" | Start date: \" + schedule.start_date",
+							"                        + \" | End date: \" + schedule.end_date",
+							"                    );",
+							"                })",
+							"            } if (verifyCapacityResponse.success == false) {",
+							"                let message_length = Object.keys(verifyCapacityResponse.message).length;",
+							"                for (i = 1; i < message_length; i++) {     ",
+							"                    pm.test('Verify capacity is true.', function () {",
+							"                        pm.expect.fail(",
+							"                            \"Response: \" + verifyCapacityResponse.success",
+							"                            + \" | Service: \" + schedule.service_name ",
+							"                            + \" | Message: \" + verifyCapacityResponse.message[i].message",
+							"                            + \" | IC: \" + verifyCapacityResponse.message[i].context_map[\"inventoryClass\"]",
+							"                            + \" | Capacity expected: \" + verifyCapacityResponse.message[i].context_map[\"capacity expected\"]",
+							"                            + \" | Capacity got: \" + verifyCapacityResponse.message[i].context_map[\"capacity got\"]",
+							"                            + \" | Travel date: \" + verifyCapacityResponse.message[i].context_map[\"travelDate\"]",
+							"                        );",
+							"                    })",
+							"                }",
+							"            }",
+							"        }",
+							"    );   ",
 							"});",
 							"",
-							"pm.test(\"Has Content-Type header\", function () {",
-							"    pm.expect(responseHeaders.hasOwnProperty(\"Content-Type\"));",
-							"});",
-							"",
-							"pm.test(\"Is response time is less than 200ms\", function () {",
-							"    pm.expect(pm.response.responseTime).to.be.below(200);",
-							"});",
-							"",
-							"",
-							"",
-							"//https://www.chaijs.com/api/bdd/#method_a",
-							"//pm.test('is valid Array', () => pm.expect(pm.response.json()).to.be.an('array').but.not.an('object'))"
+							"if (schedulesResponse.next_page) {",
+							"    let from_page = parseInt(pm.environment.get(\"from_page\"));",
+							"    pm.environment.set(\"from_page\", from_page + 1);",
+							"    postman.setNextRequest(\"GET schedules + GET Verify Capacities\");",
+							"} else {",
+							"    console.log(`This is the last page. Stopping execution`);",
+							"    postman.setNextRequest(null);",
+							"}"
 						],
 						"type": "text/javascript"
 					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{apigw-root}}/pets",
-					"host": [
-						"{{apigw-root}}"
-					],
-					"path": [
-						"pets"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "add pet",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"id": "2987e653-1c08-4f37-a960-105116dc4df6",
-						"exec": [
-							"/**",
-							" *  ",
-							" */",
-							"pm.test(\"Is valid response with json object in body\", function () {",
-							"    ",
-							"    // assert that the status code is 200",
-							"    pm.response.to.be.ok; // info, success, redirection, clientError,  serverError, are other variants",
-							"     ",
-							"    // assert that the response has a valid JSON body",
-							"    pm.response.to.be.withBody;",
-							"     ",
-							"    pm.response.to.be.json; // this assertion also checks if a body  exists, so the above check is not needed",
-							"     ",
-							"    //make sure we have a valid json array",
-							"    pm.expect(pm.response.json()).to.be.an('object').but.not.an('array');",
-							"    ",
-							"});",
-							"",
-							"pm.test(\"Has Content-Type header\", function () {",
-							"    pm.expect(responseHeaders.hasOwnProperty(\"Content-Type\"));",
-							"});",
-							"",
-							"pm.test(\"Is message response equal sucess\", function () {",
-							"    var jsonData = pm.response.json();",
-							"    pm.expect(jsonData.message).to.eql(\"success\");",
-							"});",
-							"",
-							"pm.test(\"Is response time is less than 200ms\", function () {",
-							"    pm.expect(pm.response.responseTime).to.be.below(200);",
-							"});"
-						],
-						"type": "text/javascript"
-					}
-				}
-			],
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"name": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n\t\"type\":\"Lizzard\",\n\t\"price\": 3.50\n}"
 				},
-				"url": {
-					"raw": "{{apigw-root}}/pets",
-					"host": [
-						"{{apigw-root}}"
-					],
-					"path": [
-						"pets"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "get pet by id",
-			"event": [
 				{
-					"listen": "test",
+					"listen": "prerequest",
 					"script": {
-						"id": "9bce0715-8ea7-4685-84e1-78adb75cfd74",
 						"exec": [
-							"/**",
-							" * ",
-							" */",
-							"pm.test(\"Is valid response with json object in body\", function () {",
-							"    ",
-							"    // assert that the status code is 200",
-							"    pm.response.to.be.ok; // info, success, redirection, clientError,  serverError, are other variants",
-							"     ",
-							"    // assert that the response has a valid JSON body",
-							"    pm.response.to.be.withBody;",
-							"     ",
-							"    pm.response.to.be.json; // this assertion also checks if a body  exists, so the above check is not needed",
-							"     ",
-							"    //make sure we have a valid json array",
-							"    pm.expect(pm.response.json()).to.be.an('object').but.not.an('array');",
-							"    ",
-							"});",
-							"",
-							"pm.test(\"Has Content-Type header\", function () {",
-							"    pm.expect(responseHeaders.hasOwnProperty(\"Content-Type\"));",
-							"});",
-							"",
-							"pm.test(\"Is response time is less than 200ms\", function () {",
-							"    pm.expect(pm.response.responseTime).to.be.below(200);",
-							"});",
-							"",
-							"",
-							"",
-							"//https://www.chaijs.com/api/bdd/#method_a",
-							"//pm.test('is valid Array', () => pm.expect(pm.response.json()).to.be.an('array').but.not.an('object'))",
 							""
 						],
 						"type": "text/javascript"
 					}
 				}
 			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "en-GB"
+					},
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"type": "text",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"value": "{{auth.token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
 				"url": {
-					"raw": "{{apigw-root}}/pets/3",
+					"raw": "{{inventory_host}}/api/v3/inventory/management/schedules?from_page={{from_page}}",
 					"host": [
-						"{{apigw-root}}"
+						"{{inventory_host}}"
 					],
 					"path": [
-						"pets",
-						"3"
+						"api",
+						"v3",
+						"inventory",
+						"management",
+						"schedules"
+					],
+					"query": [
+						{
+							"key": "service_name",
+							"value": "01QTEST",
+							"disabled": true
+						},
+						{
+							"key": "page_size",
+							"value": "10",
+							"disabled": true
+						},
+						{
+							"key": "intersection_start_date",
+							"value": "2022-07-27",
+							"disabled": true
+						},
+						{
+							"key": "intersection_end_date",
+							"value": "2022-07-27",
+							"disabled": true
+						},
+						{
+							"key": "from_page",
+							"value": "{{from_page}}"
+						}
 					]
 				}
 			},
 			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"value": ""
 		}
 	]
 }
